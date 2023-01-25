@@ -2,6 +2,7 @@
 This module takes care of starting the API Server, Loading the DB and Adding the endpoints
 """
 import os
+import json
 from flask import Flask, request, jsonify, url_for
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
@@ -26,19 +27,47 @@ def sitemap():
     return generate_sitemap(app)
 
 @app.route('/members', methods=['GET'])
-def handle_hello():
-
-    # this is how you can use the Family datastructure by calling its methods
+def get_all_members():
     members = jackson_family.get_all_members()
-    response_body = {
-        "hello": "world",
-        "family": members
-    }
+    response_body = members
+    if members == None:
+        return jsonify({"message": "Ha ocurrido un error"}), 400
+    return jsonify(response_body), 200
 
+
+@app.route('/member/<int:id>', methods=['GET'])
+def get_member_by_id(id):
+    response_body = jackson_family.get_member(id)
+    if response_body == None:
+        return jsonify({"message": "Ha ocurrido un error"}), 400
 
     return jsonify(response_body), 200
+
+
+@app.route('/member', methods=['POST'])
+def add_member():
+    request_body = request.json
+    member = {'id': request_body['id'] or jackson_family._generateId(),
+              'first_name': request_body['first_name'],
+              'age': request_body['age'],
+              'lucky_numbers': request_body['lucky_numbers']}
+    if member == None:
+        return jsonify({"message": "Ha ocurrido un error"}), 400
+    response_body = jackson_family.add_member(member)
+    return jsonify(response_body), 200
+
+
+@app.route('/member/<int:id>', methods=['DELETE'])
+def delete_member(id):
+    response_body = {"done": jackson_family.delete_member(id)}
+    if response_body == None:
+        return jsonify({"message": "Ha ocurrido un error"}), 400
+    return jsonify(response_body), 200
+
 
 # this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 3000))
     app.run(host='0.0.0.0', port=PORT, debug=True)
+
+
